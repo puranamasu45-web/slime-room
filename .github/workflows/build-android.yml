@@ -1,4 +1,5 @@
 name: Build Android AAB and APK
+# Builds Android artifacts whenever app or Android files change.
 
 on:
   workflow_dispatch:
