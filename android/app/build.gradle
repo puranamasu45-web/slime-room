@@ -4,6 +4,17 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Release signing is optional for CI.
+// If GitHub Actions secrets are present, the workflow will create a keystore file
+// and these environment variables will produce a Play-uploadable release bundle.
+// If they are absent, the build falls back to the debug signing config so the
+// project can still produce a verification AAB artifact.
+def hasReleaseSigning = System.getenv("KEYSTORE_PATH") != null &&
+        System.getenv("KEYSTORE_PASSWORD") != null &&
+        System.getenv("KEY_ALIAS") != null &&
+        System.getenv("KEY_PASSWORD") != null &&
+        file(System.getenv("KEYSTORE_PATH")).exists()
+
 android {
     namespace = "com.puranamasu45.slime_room"
     compileSdk = 35
@@ -14,6 +25,25 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile = file(System.getenv("KEYSTORE_PATH"))
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled = false
+            shrinkResources = false
+        }
     }
 }
 
