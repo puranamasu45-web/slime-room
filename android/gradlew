@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+# Lightweight Gradle launcher for CI-friendly Flutter builds.
+# The full Gradle wrapper JAR is intentionally not committed here; GitHub Actions
+# will install Gradle and make this script executable before running Flutter.
+
+set -e
+
+if command -v gradle >/dev/null 2>&1; then
+  exec gradle "$@"
+fi
+
+echo "Gradle is not installed. Install Gradle 8.10.2 or run the GitHub Actions build." >&2
+exit 1
