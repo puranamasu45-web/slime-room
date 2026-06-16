@@ -32,16 +32,38 @@ This first version is intentionally minimal for Google Play testing.
 - No special permissions
 - No user data collection planned
 
-## Planned repository steps
+## Repository steps
 
 1. Add Flutter project metadata. ✅
 2. Add the one-screen slime tapping game in `lib/main.dart`. ✅
 3. Add Android build configuration using `com.puranamasu45.slime_room`. ✅
-4. Add GitHub Actions to build an Android App Bundle (`.aab`).
+4. Add GitHub Actions to build an Android App Bundle (`.aab`). ✅
 
-## Build note
+## Build from GitHub Actions
 
-Android build files have been added. The target artifact for Google Play will be an Android App Bundle:
+The workflow is available at:
+
+```text
+.github/workflows/build-android.yml
+```
+
+It runs automatically when `main` changes under `lib/`, `android/`, `pubspec.yaml`, or the workflow file. It can also be started manually from the GitHub Actions tab with **Build Android AAB**.
+
+The workflow output artifact is named:
+
+```text
+slime_room-release-aab
+```
+
+Inside the artifact, the expected bundle path is:
+
+```text
+build/app/outputs/bundle/release/app-release.aab
+```
+
+## Local build
+
+If you build locally with Flutter installed:
 
 ```bash
 flutter pub get
@@ -53,6 +75,21 @@ The expected output path will be:
 ```text
 build/app/outputs/bundle/release/app-release.aab
 ```
+
+## Signing note
+
+The CI workflow can build without release signing secrets by falling back to the debug signing config. That artifact is useful for build verification.
+
+For a Google Play upload bundle, add these repository secrets and rerun the workflow:
+
+```text
+KEYSTORE_BASE64
+KEYSTORE_PASSWORD
+KEY_ALIAS
+KEY_PASSWORD
+```
+
+`KEYSTORE_BASE64` should contain the Base64-encoded `.jks` upload keystore. Do not commit keystore files or passwords to the repository.
 
 ## Android note
 
