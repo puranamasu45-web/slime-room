@@ -35,15 +35,16 @@ This first version is intentionally minimal for Google Play testing.
 ## Planned repository steps
 
 1. Add Flutter project metadata. ✅
-2. Add the one-screen slime tapping game in `lib/main.dart`.
-3. Add Android build configuration using `com.puranamasu45.slime_room`.
+2. Add the one-screen slime tapping game in `lib/main.dart`. ✅
+3. Add Android build configuration using `com.puranamasu45.slime_room`. ✅
 4. Add GitHub Actions to build an Android App Bundle (`.aab`).
 
 ## Build note
 
-Android build files will be added in a later step. After that, the target artifact for Google Play will be an Android App Bundle:
+Android build files have been added. The target artifact for Google Play will be an Android App Bundle:
 
 ```bash
+flutter pub get
 flutter build appbundle --release
 ```
 
@@ -52,3 +53,13 @@ The expected output path will be:
 ```text
 build/app/outputs/bundle/release/app-release.aab
 ```
+
+## Android note
+
+The Android package / applicationId is fixed as:
+
+```text
+com.puranamasu45.slime_room
+```
+
+The app is configured without ads, billing, network permission, or special Android permissions.
