@@ -1,9 +1,17 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await MobileAds.instance.initialize();
+  }
+
   runApp(const SlimeRoomApp());
 }
 
@@ -34,12 +42,26 @@ class SlimeTapPage extends StatefulWidget {
 class _SlimeTapPageState extends State<SlimeTapPage>
     with SingleTickerProviderStateMixin {
   static const int goalTaps = 10000;
+  static const int _rewardBonusTaps = 100;
   static const String _saveKey = 'slime_tap_count';
+
+  // Google official Android test ad unit IDs.
+  // Replace these with your own AdMob ad unit IDs before release.
+  static const String _kBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String _kRewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
 
   late final AnimationController _jumpController;
   int _tapCount = 0;
   bool _loaded = false;
 
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+
+  RewardedAd? _rewardedAd;
+  bool _isRewardedAdReady = false;
+  bool _isRewardedAdLoading = false;
+
+  bool get _adsSupported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   double get _progress => (_tapCount / goalTaps).clamp(0.0, 1.0);
   bool get _cleared => _tapCount >= goalTaps;
 
@@ -51,10 +73,14 @@ class _SlimeTapPageState extends State<SlimeTapPage>
       duration: const Duration(milliseconds: 280),
     );
     _loadTapCount();
+    _loadBannerAd();
+    _loadRewardedAd();
   }
 
   @override
   void dispose() {
+    _bannerAd?.dispose();
+    _rewardedAd?.dispose();
     _jumpController.dispose();
     super.dispose();
   }
@@ -68,6 +94,102 @@ class _SlimeTapPageState extends State<SlimeTapPage>
       _tapCount = prefs.getInt(_saveKey) ?? 0;
       _loaded = true;
     });
+  }
+
+  void _loadBannerAd() {
+    if (!_adsSupported) {
+      return;
+    }
+
+    final bannerAd = BannerAd(
+      adUnitId: _kBannerAdUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _bannerAd = ad as BannerAd;
+            _isBannerAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _bannerAd = null;
+            _isBannerAdLoaded = false;
+          });
+        },
+      ),
+    );
+
+    bannerAd.load();
+  }
+
+  void _loadRewardedAd() {
+    if (!_adsSupported || _cleared || _isRewardedAdLoading || _rewardedAd != null) {
+      return;
+    }
+
+    _isRewardedAdLoading = true;
+    RewardedAd.load(
+      adUnitId: _kRewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          ad.fullScreenContentCallback = FullScreenContentCallback<RewardedAd>(
+            onAdDismissedFullScreenContent: (ad) {
+              ad.dispose();
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _rewardedAd = null;
+                _isRewardedAdReady = false;
+              });
+              _loadRewardedAd();
+            },
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              ad.dispose();
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _rewardedAd = null;
+                _isRewardedAdReady = false;
+              });
+              _loadRewardedAd();
+            },
+          );
+
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _rewardedAd = ad;
+            _isRewardedAdReady = true;
+            _isRewardedAdLoading = false;
+          });
+        },
+        onAdFailedToLoad: (error) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _rewardedAd = null;
+            _isRewardedAdReady = false;
+            _isRewardedAdLoading = false;
+          });
+        },
+      ),
+    );
   }
 
   Future<void> _saveTapCount() async {
@@ -96,6 +218,61 @@ class _SlimeTapPageState extends State<SlimeTapPage>
         const SnackBar(content: Text('ゴール！スライムは10000回跳ねきった！')),
       );
     }
+  }
+
+  Future<void> _addBonusTaps(int amount) async {
+    if (!_loaded || _cleared) {
+      return;
+    }
+
+    final before = _tapCount;
+    setState(() {
+      _tapCount = math.min(goalTaps, _tapCount + amount);
+    });
+    _jumpController.forward(from: 0);
+    await _saveTapCount();
+
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    if (before < goalTaps && _tapCount >= goalTaps) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('ゴール！広告ボーナスでスライム完全勝利！')),
+      );
+    } else {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('+100 タップ！スライムがごきげんに跳ねた！')),
+      );
+    }
+  }
+
+  void _showRewardedAd() {
+    if (!_adsSupported) {
+      return;
+    }
+
+    final rewardedAd = _rewardedAd;
+    if (rewardedAd == null || !_isRewardedAdReady) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('動画広告を準備中です。少し待ってね。')),
+      );
+      _loadRewardedAd();
+      return;
+    }
+
+    setState(() {
+      _rewardedAd = null;
+      _isRewardedAdReady = false;
+    });
+
+    rewardedAd.show(
+      onUserEarnedReward: (ad, reward) async {
+        await _addBonusTaps(_rewardBonusTaps);
+      },
+    );
   }
 
   Future<void> _resetTapCount() async {
@@ -132,6 +309,7 @@ class _SlimeTapPageState extends State<SlimeTapPage>
       _tapCount = 0;
     });
     _jumpController.forward(from: 0);
+    _loadRewardedAd();
   }
 
   String _slimeLine() {
@@ -159,6 +337,41 @@ class _SlimeTapPageState extends State<SlimeTapPage>
     return 'スライムをタップして10000回跳ねよう。';
   }
 
+  Widget _buildRewardedAdButton() {
+    if (!_adsSupported || _cleared) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: FilledButton.icon(
+        onPressed: _isRewardedAdReady ? _showRewardedAd : null,
+        icon: const Icon(Icons.ondemand_video),
+        label: Text(
+          _isRewardedAdReady
+              ? '広告動画で +$_rewardBonusTaps タップ'
+              : '広告動画を準備中...',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBannerAd() {
+    final bannerAd = _bannerAd;
+    if (!_adsSupported || !_isBannerAdLoaded || bannerAd == null) {
+      return const SizedBox.shrink();
+    }
+
+    return ColoredBox(
+      color: Colors.white.withValues(alpha: 0.65),
+      child: SizedBox(
+        width: bannerAd.size.width.toDouble(),
+        height: bannerAd.size.height.toDouble(),
+        child: AdWidget(ad: bannerAd),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,99 +384,107 @@ class _SlimeTapPageState extends State<SlimeTapPage>
           ),
         ),
         child: SafeArea(
-          child: _loaded
-              ? Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'slime_room',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: _resetTapCount,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Reset'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '$_tapCount / $goalTaps',
-                        style: const TextStyle(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: LinearProgressIndicator(
-                          minHeight: 16,
-                          value: _progress,
-                          backgroundColor: Colors.white.withValues(alpha: 0.75),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      Expanded(
-                        child: Center(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _tapSlime,
-                            child: AnimatedBuilder(
-                              animation: _jumpController,
-                              builder: (context, child) {
-                                final wave = math.sin(_jumpController.value * math.pi);
-                                final squash = math.sin(_jumpController.value * math.pi * 2);
-                                return Transform.translate(
-                                  offset: Offset(0, -34 * wave),
-                                  child: Transform.scale(
-                                    scaleX: 1 + (0.08 * squash.abs()),
-                                    scaleY: 1 - (0.05 * squash.abs()),
-                                    child: child,
+          child: Column(
+            children: [
+              Expanded(
+                child: _loaded
+                    ? Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'slime_room',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
                                   ),
-                                );
-                              },
-                              child: CustomPaint(
-                                size: const Size(240, 220),
-                                painter: SlimePainter(
-                                  progress: _progress,
-                                  cleared: _cleared,
+                                ),
+                                TextButton.icon(
+                                  onPressed: _resetTapCount,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reset'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '$_tapCount / $goalTaps',
+                              style: const TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                minHeight: 16,
+                                value: _progress,
+                                backgroundColor: Colors.white.withValues(alpha: 0.75),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            Expanded(
+                              child: Center(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: _tapSlime,
+                                  child: AnimatedBuilder(
+                                    animation: _jumpController,
+                                    builder: (context, child) {
+                                      final wave = math.sin(_jumpController.value * math.pi);
+                                      final squash = math.sin(_jumpController.value * math.pi * 2);
+                                      return Transform.translate(
+                                        offset: Offset(0, -34 * wave),
+                                        child: Transform.scale(
+                                          scaleX: 1 + (0.08 * squash.abs()),
+                                          scaleY: 1 - (0.05 * squash.abs()),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: CustomPaint(
+                                      size: const Size(240, 220),
+                                      painter: SlimePainter(
+                                        progress: _progress,
+                                        cleared: _cleared,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              child: Text(
+                                _slimeLine(),
+                                key: ValueKey<String>(_slimeLine()),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            FilledButton.tonalIcon(
+                              onPressed: _tapSlime,
+                              icon: const Icon(Icons.touch_app),
+                              label: const Text('スライムをタップ'),
+                            ),
+                            _buildRewardedAdButton(),
+                          ],
                         ),
-                      ),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        child: Text(
-                          _slimeLine(),
-                          key: ValueKey<String>(_slimeLine()),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      FilledButton.tonalIcon(
-                        onPressed: _tapSlime,
-                        icon: const Icon(Icons.touch_app),
-                        label: const Text('スライムをタップ'),
-                      ),
-                    ],
-                  ),
-                )
-              : const Center(child: CircularProgressIndicator()),
+                      )
+                    : const Center(child: CircularProgressIndicator()),
+              ),
+              _buildBannerAd(),
+            ],
+          ),
         ),
       ),
     );
