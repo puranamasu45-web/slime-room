@@ -38,6 +38,7 @@ This first version is intentionally minimal for Google Play testing.
 2. Add the one-screen slime tapping game in `lib/main.dart`. ✅
 3. Add Android build configuration using `com.puranamasu45.slime_room`. ✅
 4. Add GitHub Actions to build an Android App Bundle (`.aab`). ✅
+5. Add a debug APK artifact for direct device testing. ✅
 
 ## Build from GitHub Actions
 
@@ -47,9 +48,11 @@ The workflow is available at:
 .github/workflows/build-android.yml
 ```
 
-It runs automatically when `main` changes under `lib/`, `android/`, `pubspec.yaml`, or the workflow file. It can also be started manually from the GitHub Actions tab with **Build Android AAB**.
+It runs automatically when `main` changes under `lib/`, `android/`, `pubspec.yaml`, or the workflow file. It can also be started manually from the GitHub Actions tab with **Build Android AAB and APK**.
 
-The workflow output artifact is named:
+The workflow creates two downloadable artifacts.
+
+### Google Play upload artifact
 
 ```text
 slime_room-release-aab
@@ -61,6 +64,22 @@ Inside the artifact, the expected bundle path is:
 build/app/outputs/bundle/release/app-release.aab
 ```
 
+Use this `.aab` for Google Play Console upload after proper release signing is configured.
+
+### Direct install test artifact
+
+```text
+slime_room-debug-apk
+```
+
+Inside the artifact, the expected APK path is:
+
+```text
+build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Use this `.apk` for quick Android device testing. On the phone, allow installation from the app you use to open the file if Android asks for permission.
+
 ## Local build
 
 If you build locally with Flutter installed:
@@ -68,12 +87,14 @@ If you build locally with Flutter installed:
 ```bash
 flutter pub get
 flutter build appbundle --release
+flutter build apk --debug
 ```
 
-The expected output path will be:
+The expected output paths will be:
 
 ```text
 build/app/outputs/bundle/release/app-release.aab
+build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 ## Signing note
