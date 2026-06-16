@@ -17,12 +17,21 @@ def hasReleaseSigning = System.getenv("KEYSTORE_PATH") != null &&
 
 android {
     namespace = "com.puranamasu45.slime_room"
-    compileSdk = 35
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
     defaultConfig {
         applicationId = "com.puranamasu45.slime_room"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
     }
