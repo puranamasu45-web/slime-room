@@ -1,163 +1,448 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Slime Room</title>
-  <style>
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #dffcff, #fff4c9);
-      font-family: system-ui, sans-serif;
-      color: #23506a;
-      overflow: hidden;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e1230">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>多重構築タワー</title>
+<style>
+  :root{
+    --ink:#0e1230;
+    --panel:rgba(10,13,38,0.74);
+    --panel-2:rgba(22,27,64,0.78);
+    --line:rgba(255,255,255,0.10);
+    --text:#eaecff;
+    --muted:#9aa0d4;
+    --gold:#f5b94a;
+    --gold-d:#c98f23;
+    --cyan:#4fe3d0;
+    --green:#6fe39b;
+    --bg-top:#7aa6ff;
+    --bg-bot:#cfe0ff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;overflow:hidden;}
+  body{
+    font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Hiragino Maru Gothic ProN","Segoe UI",Roboto,sans-serif;
+    color:var(--text);
+    background:linear-gradient(180deg,var(--bg-top),var(--bg-bot));
+    transition:background 1.2s ease;
+    -webkit-user-select:none;user-select:none;
+    display:flex;flex-direction:column;
+    height:100dvh;
+  }
+  #stars{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s ease;}
+  .star{position:absolute;background:#fff;border-radius:50%;animation:tw 3s infinite ease-in-out;}
+  @keyframes tw{0%,100%{opacity:.25}50%{opacity:.9}}
 
-    .room {
-      text-align: center;
-      background: rgba(255,255,255,.75);
-      padding: 28px;
-      border-radius: 28px;
-      box-shadow: 0 18px 50px rgba(60,120,150,.22);
-      width: min(90vw, 420px);
-    }
+  /* ---- top stats ---- */
+  header{padding:calc(env(safe-area-inset-top) + 10px) 14px 8px;z-index:3;}
+  .hud{
+    background:var(--panel);backdrop-filter:blur(8px);
+    border:1px solid var(--line);border-radius:18px;
+    padding:12px 14px;display:flex;flex-direction:column;gap:8px;
+  }
+  .blocks{display:flex;align-items:baseline;gap:8px;}
+  .blocks .n{font-size:34px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;color:var(--gold);text-shadow:0 1px 0 rgba(0,0,0,.25);}
+  .blocks .u{font-size:13px;color:var(--muted);}
+  .subrow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);}
+  .subrow b{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+  .pill{display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;}
+  .pill.cy b{color:var(--cyan);}
+  .layer{color:var(--text);font-weight:700;}
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: 32px;
-    }
+  /* ---- tower stage ---- */
+  #stage{flex:1;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;z-index:2;}
+  #tap{position:absolute;inset:0;}
+  #tower{display:flex;flex-direction:column-reverse;align-items:center;gap:2px;padding-bottom:6px;transform-origin:bottom center;pointer-events:none;}
+  #tower.pulse{animation:pulse .12s ease;}
+  @keyframes pulse{50%{transform:scale(1.035)}}
+  .seg{width:64px;height:16px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.25);}
+  .seg.cap{height:30px;width:74px;border-radius:9px;font-size:18px;}
+  .ground{position:absolute;bottom:0;left:0;right:0;height:46px;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.22));border-top:2px solid rgba(255,255,255,.12);}
+  .hint{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:13px;color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none;}
+  .pop{position:absolute;font-weight:800;font-size:20px;color:var(--gold);text-shadow:0 2px 4px rgba(0,0,0,.4);pointer-events:none;animation:pop .8s ease-out forwards;}
+  @keyframes pop{0%{opacity:1;transform:translate(-50%,0) scale(.8)}100%{opacity:0;transform:translate(-50%,-70px) scale(1.1)}}
 
-    p {
-      margin: 8px 0 20px;
-      font-size: 16px;
-    }
+  /* ---- bottom panel ---- */
+  #panel{z-index:3;background:var(--panel);backdrop-filter:blur(10px);border-top:1px solid var(--line);border-radius:22px 22px 0 0;padding:8px 10px calc(env(safe-area-inset-bottom) + 10px);}
+  .tabs{display:flex;gap:6px;margin-bottom:8px;}
+  .tab{flex:1;padding:9px 0;text-align:center;font-size:14px;font-weight:700;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:13px;transition:.15s;}
+  .tab.on{color:var(--ink);background:var(--gold);border-color:transparent;}
+  .tab.on.cy{background:var(--cyan);}
+  .list{max-height:30dvh;overflow-y:auto;display:flex;flex-direction:column;gap:7px;-webkit-overflow-scrolling:touch;}
+  .card{display:flex;align-items:center;gap:11px;padding:9px 11px;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;transition:.12s;}
+  .card:active{transform:scale(.98);}
+  .card.buy{border-color:rgba(111,227,155,.55);}
+  .card.lock{opacity:.45;}
+  .ico{font-size:24px;width:32px;text-align:center;flex:none;}
+  .meta{flex:1;min-width:0;}
+  .meta .t{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .meta .t .cnt{font-size:12px;color:var(--muted);font-weight:600;}
+  .meta .d{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .cost{font-size:13px;font-weight:800;text-align:right;flex:none;font-variant-numeric:tabular-nums;}
+  .cost.ok{color:var(--green);}
+  .cost.no{color:var(--muted);}
+  .big-btn{width:100%;padding:14px;border:none;border-radius:16px;font-size:16px;font-weight:800;color:var(--ink);background:var(--cyan);font-family:inherit;}
+  .big-btn:disabled{background:var(--panel-2);color:var(--muted);}
+  .pr-head{text-align:center;padding:4px 6px 12px;}
+  .pr-head .x{font-size:15px;color:var(--muted);}
+  .pr-head .x b{color:var(--cyan);font-size:22px;}
+  .pr-note{font-size:11.5px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;}
 
-    .slime {
-      width: 170px;
-      height: 125px;
-      margin: 24px auto 18px;
-      border-radius: 50% 50% 42% 42%;
-      background:
-        radial-gradient(circle at 35% 25%, rgba(255,255,255,.9), transparent 18%),
-        linear-gradient(#8bf1ff, #35bde8);
-      box-shadow:
-        inset 0 -14px 22px rgba(0,100,150,.22),
-        0 18px 0 rgba(40,120,160,.14);
-      position: relative;
-      animation: purun 1.4s infinite ease-in-out;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .slime::before,
-    .slime::after {
-      content: "";
-      position: absolute;
-      top: 48px;
-      width: 15px;
-      height: 22px;
-      border-radius: 50%;
-      background: #17465a;
-    }
-
-    .slime::before {
-      left: 54px;
-    }
-
-    .slime::after {
-      right: 54px;
-    }
-
-    .mouth {
-      position: absolute;
-      left: 50%;
-      top: 78px;
-      width: 34px;
-      height: 18px;
-      transform: translateX(-50%);
-      border-bottom: 5px solid #17465a;
-      border-radius: 0 0 30px 30px;
-    }
-
-    .shadow {
-      width: 150px;
-      height: 24px;
-      margin: 0 auto 18px;
-      border-radius: 50%;
-      background: rgba(50,100,130,.18);
-      animation: shadow 1.4s infinite ease-in-out;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 12px 22px;
-      font-size: 16px;
-      font-weight: bold;
-      background: #35bde8;
-      color: white;
-      box-shadow: 0 8px 18px rgba(40,120,160,.25);
-    }
-
-    button:active {
-      transform: translateY(2px);
-    }
-
-    .jump {
-      animation: jump .45s ease;
-    }
-
-    @keyframes purun {
-      0%, 100% { transform: scale(1, 1); }
-      35% { transform: scale(1.08, .92) translateY(8px); }
-      65% { transform: scale(.94, 1.08) translateY(-10px); }
-    }
-
-    @keyframes shadow {
-      0%, 100% { transform: scale(1); opacity: .18; }
-      50% { transform: scale(.82); opacity: .1; }
-    }
-
-    @keyframes jump {
-      0% { transform: translateY(0) scale(1); }
-      45% { transform: translateY(-70px) scale(.95, 1.08); }
-      100% { transform: translateY(0) scale(1.08, .92); }
-    }
-  </style>
+  .gear{position:fixed;top:calc(env(safe-area-inset-top) + 14px);right:18px;z-index:5;font-size:20px;opacity:.7;}
+  /* ---- modal ---- */
+  .ov{position:fixed;inset:0;background:rgba(4,5,15,.66);display:none;align-items:center;justify-content:center;z-index:10;padding:24px;}
+  .ov.show{display:flex;}
+  .modal{background:#141838;border:1px solid var(--line);border-radius:20px;padding:22px;max-width:340px;width:100%;text-align:center;}
+  .modal h2{margin:0 0 6px;font-size:20px;}
+  .modal p{font-size:14px;color:var(--muted);line-height:1.6;margin:8px 0;}
+  .modal .amt{font-size:30px;font-weight:800;color:var(--gold);margin:6px 0;}
+  .modal button{margin-top:14px;width:100%;padding:13px;border:none;border-radius:14px;font-weight:800;font-size:15px;background:var(--gold);color:var(--ink);font-family:inherit;}
+  .modal .ghost{background:transparent;color:var(--muted);border:1px solid var(--line);margin-top:8px;}
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;}}
+</style>
 </head>
 <body>
-  <main class="room">
-    <h1>Slime Room</h1>
-    <p>もちもちスライムが住みはじめました。</p>
+<div id="stars"></div>
+<div class="gear" id="gear">⚙️</div>
 
-    <div id="slime" class="slime">
-      <div class="mouth"></div>
+<header>
+  <div class="hud">
+    <div class="blocks"><span class="n" id="blocks">0</span><span class="u">ブロック</span></div>
+    <div class="subrow">
+      <span>毎秒 <b id="bps">0</b></span>
+      <span class="pill cy">🔷 結晶 <b id="crystals">0</b></span>
     </div>
-    <div class="shadow"></div>
+    <div class="subrow">
+      <span>到達層 <span class="layer" id="layer">地上</span></span>
+      <span>生産倍率 <b id="mult">×1.00</b></span>
+    </div>
+  </div>
+</header>
 
-    <button id="button">ぷるん！</button>
-    <p id="message">タップすると跳ねます。</p>
-  </main>
+<div id="stage">
+  <div class="ground"></div>
+  <div id="tower"></div>
+  <div class="hint" id="hint">タワーをタップして集める 👆</div>
+  <div id="tap"></div>
+</div>
 
-  <script>
-    const slime = document.getElementById("slime");
-    const button = document.getElementById("button");
-    const message = document.getElementById("message");
-    let count = 0;
+<div id="panel">
+  <div class="tabs">
+    <div class="tab on" data-tab="build">🏗 構築</div>
+    <div class="tab" data-tab="up">⚡ 強化</div>
+    <div class="tab cy" data-tab="pr">🔺 多重</div>
+  </div>
+  <div class="list" id="list"></div>
+</div>
 
-    function purun() {
-      count++;
-      slime.classList.remove("jump");
-      void slime.offsetWidth;
-      slime.classList.add("jump");
-      message.textContent = `ぷるん！ ${count} 回はねました。`;
+<!-- modals -->
+<div class="ov" id="ovWelcome"><div class="modal">
+  <h2>おかえり！</h2>
+  <p>留守のあいだも建物が稼いどったで。</p>
+  <div class="amt" id="offAmt">+0</div>
+  <p style="font-size:12px">（オフライン報酬・最大8時間ぶん）</p>
+  <button onclick="closeOv('ovWelcome')">受け取る</button>
+</div></div>
+
+<div class="ov" id="ovPr"><div class="modal">
+  <h2>🔺 多重構築する？</h2>
+  <p>建物とブロックはリセットされるけど、<b style="color:var(--cyan)">結晶</b>を獲得して全生産が永久に上がるで。</p>
+  <div class="amt" id="prGain" style="color:var(--cyan)">+0</div>
+  <p style="font-size:12px">結晶</p>
+  <button onclick="doPrestige()">構築しなおす</button>
+  <button class="ghost" onclick="closeOv('ovPr')">やめとく</button>
+</div></div>
+
+<div class="ov" id="ovReset"><div class="modal">
+  <h2>⚠️ 最初から</h2>
+  <p>セーブを全消去して完全リセットするで。結晶も層も消える。ほんまにええか？</p>
+  <button onclick="hardReset()" style="background:#e36f6f">全部消す</button>
+  <button class="ghost" onclick="closeOv('ovReset')">キャンセル</button>
+</div></div>
+
+<script>
+/* ===== データ定義 ===== */
+const BUILDINGS = [
+  {id:'tent',    name:'テント',     icon:'⛺', col:'#8a6f4f', baseCost:15,    baseProd:0.2},
+  {id:'hut',     name:'小屋',       icon:'🛖', col:'#a0794a', baseCost:120,   baseProd:1.5},
+  {id:'works',   name:'工房',       icon:'🏚️', col:'#9a8b6a', baseCost:1300,  baseProd:9},
+  {id:'factory', name:'工場',       icon:'🏭', col:'#7d8597', baseCost:14000, baseProd:55},
+  {id:'pylon',   name:'鉄塔',       icon:'🗼', col:'#6f8aa6', baseCost:2e5,   baseProd:340},
+  {id:'radio',   name:'電波塔',     icon:'📡', col:'#5f7fb8', baseCost:3.3e6, baseProd:2400},
+  {id:'orbit',   name:'軌道塔',     icon:'🛰️', col:'#5566c0', baseCost:5.1e7, baseProd:16000},
+  {id:'stellar', name:'恒星構造体', icon:'⭐', col:'#c9a24f', baseCost:1e9,   baseProd:120000},
+];
+const COST_GROWTH = 1.15;
+const LAYERS = [
+  {name:'地上',     need:0,    top:'#7aa6ff', bot:'#cfe0ff', stars:0},
+  {name:'空',       need:5,    top:'#3f6fd8', bot:'#8fb4f0', stars:0},
+  {name:'成層圏',   need:25,   top:'#2a3a8c', bot:'#5566c0', stars:.25},
+  {name:'軌道',     need:100,  top:'#0e1640', bot:'#1a2a66', stars:.7},
+  {name:'深宇宙',   need:400,  top:'#05060f', bot:'#0d1230', stars:1},
+  {name:'銀河',     need:1500, top:'#0a0518', bot:'#1a0a2e', stars:1},
+];
+
+/* ===== 状態 ===== */
+let S = null;
+function freshState(){
+  return {
+    blocks:0, runEarned:0, totalEarned:0,
+    crystals:0,
+    counts:{}, tapLv:0, prodLv:0,
+    last:Date.now()
+  };
+}
+
+/* ===== 派生値 ===== */
+function crystalMult(){ return 1 + S.crystals*0.02; }
+function prodMult(){ return (1 + 0.25*S.prodLv) * crystalMult(); }
+function baseProdSec(){
+  let p=0;
+  for(const b of BUILDINGS){ p += (S.counts[b.id]||0) * b.baseProd; }
+  return p;
+}
+function prodSec(){ return baseProdSec() * prodMult(); }
+function tapYield(){ return (1 + S.tapLv)*crystalMult() + 0.10*prodSec(); }
+function costOf(b){ return Math.floor(b.baseCost * Math.pow(COST_GROWTH, S.counts[b.id]||0)); }
+function tapCost(){ return Math.floor(25 * Math.pow(3, S.tapLv)); }
+function prodCost(){ return Math.floor(100 * Math.pow(4, S.prodLv)); }
+function pendingCrystals(){ return Math.floor(Math.sqrt(S.runEarned/1e6)); }
+function currentLayer(){
+  let idx=0;
+  for(let i=0;i<LAYERS.length;i++){ if(S.crystals>=LAYERS[i].need) idx=i; }
+  return idx;
+}
+
+/* ===== 数字フォーマット ===== */
+function fmt(n){
+  if(n<1000) return Math.floor(n).toString();
+  const u=['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+  let i=-1,x=n;
+  while(x>=1000 && i<u.length-1){x/=1000;i++;}
+  return x.toFixed(x<10?2:x<100?1:0)+u[i];
+}
+
+/* ===== タップ ===== */
+const stage=document.getElementById('tap');
+const tower=document.getElementById('tower');
+stage.addEventListener('pointerdown',e=>{
+  const g=tapYield();
+  S.blocks+=g; S.runEarned+=g; S.totalEarned+=g;
+  if(navigator.vibrate) navigator.vibrate(8);
+  spawnPop(e.clientX,e.clientY,'+'+fmt(g));
+  tower.classList.remove('pulse'); void tower.offsetWidth; tower.classList.add('pulse');
+  document.getElementById('hint').style.display='none';
+  render();
+},{passive:true});
+
+function spawnPop(x,y,txt){
+  const el=document.createElement('div');
+  el.className='pop'; el.textContent=txt;
+  el.style.left=x+'px'; el.style.top=(y-10)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),800);
+}
+
+/* ===== タワー描画 ===== */
+function drawTower(){
+  let segs=[];
+  for(const b of BUILDINGS){
+    const c=S.counts[b.id]||0;
+    if(c<=0) continue;
+    const show=Math.min(c,10);
+    for(let i=0;i<show;i++){
+      segs.push({col:b.col, icon:(i===show-1)?b.icon:'', cap:false, tier:b.id});
     }
+  }
+  // 一番上は最上位建物を大きく
+  let top=null;
+  for(let i=BUILDINGS.length-1;i>=0;i--){ if((S.counts[BUILDINGS[i].id]||0)>0){ top=BUILDINGS[i]; break; } }
+  segs = segs.slice(-58);
+  let html='';
+  for(const s of segs){
+    html+=`<div class="seg" style="background:${s.col}">${s.icon}</div>`;
+  }
+  if(top){ html+=`<div class="seg cap" style="background:${top.col}">${top.icon}</div>`; }
+  tower.innerHTML = html || '<div style="color:rgba(255,255,255,.6);font-size:13px;padding-bottom:30px">まだ何も無い…<br>下の「構築」から建てよう</div>';
+}
 
-    slime.addEventListener("click", purun);
-    button.addEventListener("click", purun);
-  </script>
+/* ===== 背景（層）===== */
+let lastLayer=-1;
+function applyLayer(){
+  const L=LAYERS[currentLayer()];
+  document.documentElement.style.setProperty('--bg-top',L.top);
+  document.documentElement.style.setProperty('--bg-bot',L.bot);
+  document.getElementById('stars').style.opacity=L.stars;
+  document.getElementById('layer').textContent=L.name;
+}
+function buildStars(){
+  const c=document.getElementById('stars'); c.innerHTML='';
+  for(let i=0;i<70;i++){
+    const s=document.createElement('div'); s.className='star';
+    const sz=Math.random()*2+1;
+    s.style.width=s.style.height=sz+'px';
+    s.style.left=Math.random()*100+'%';
+    s.style.top=Math.random()*100+'%';
+    s.style.animationDelay=Math.random()*3+'s';
+    c.appendChild(s);
+  }
+}
+
+/* ===== パネル描画 ===== */
+let tab='build';
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    tab=t.dataset.tab;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+    renderList();
+  });
+});
+
+function renderList(){
+  const L=document.getElementById('list');
+  if(tab==='build'){
+    let prevOwned=true; let html='';
+    for(let i=0;i<BUILDINGS.length;i++){
+      const b=BUILDINGS[i];
+      const c=S.counts[b.id]||0;
+      const cost=costOf(b);
+      const ok=S.blocks>=cost;
+      const unlocked = i===0 || (S.counts[BUILDINGS[i-1].id]||0)>0 || c>0;
+      const each=b.baseProd*prodMult();
+      html+=`<div class="card ${ok&&unlocked?'buy':''} ${unlocked?'':'lock'}" data-buy="${b.id}">
+        <div class="ico">${b.icon}</div>
+        <div class="meta">
+          <div class="t">${unlocked?b.name:'？？？'} <span class="cnt">×${c}</span></div>
+          <div class="d">${unlocked?('1棟 '+fmt(each)+'/秒'):'前の建物を建てると解放'}</div>
+        </div>
+        <div class="cost ${ok?'ok':'no'}">${unlocked?fmt(cost):'🔒'}</div>
+      </div>`;
+    }
+    L.innerHTML=html;
+    L.querySelectorAll('[data-buy]').forEach(el=>el.onclick=()=>buy(el.dataset.buy));
+  }
+  else if(tab==='up'){
+    const tC=tapCost(), pC=prodCost();
+    const tOk=S.blocks>=tC, pOk=S.blocks>=pC;
+    L.innerHTML=`
+      <div class="card ${tOk?'buy':''}" data-up="tap">
+        <div class="ico">👆</div>
+        <div class="meta"><div class="t">タップ強化 <span class="cnt">Lv.${S.tapLv}</span></div>
+        <div class="d">タップで得る量を増やす（現在 +${fmt(tapYield())}）</div></div>
+        <div class="cost ${tOk?'ok':'no'}">${fmt(tC)}</div>
+      </div>
+      <div class="card ${pOk?'buy':''}" data-up="prod">
+        <div class="ico">⚙️</div>
+        <div class="meta"><div class="t">生産強化 <span class="cnt">Lv.${S.prodLv}</span></div>
+        <div class="d">全建物の生産 +25%（現在 ×${(1+0.25*S.prodLv).toFixed(2)}）</div></div>
+        <div class="cost ${pOk?'ok':'no'}">${fmt(pC)}</div>
+      </div>`;
+    L.querySelector('[data-up="tap"]').onclick=()=>{ if(S.blocks>=tapCost()){S.blocks-=tapCost();S.tapLv++;render();} };
+    L.querySelector('[data-up="prod"]').onclick=()=>{ if(S.blocks>=prodCost()){S.blocks-=prodCost();S.prodLv++;render();} };
+  }
+  else { // prestige
+    const g=pendingCrystals();
+    const li=currentLayer();
+    const next=LAYERS[li+1];
+    const toNext = next ? `次の層「${next.name}」まで 結晶 あと ${Math.max(0,next.need-S.crystals)}` : '最終層に到達済み';
+    L.innerHTML=`
+      <div class="pr-head">
+        <div class="x">今リセットすると獲得：<br><b>🔷 ${g}</b> 結晶</div>
+      </div>
+      <button class="big-btn" id="prBtn" ${g<1?'disabled':''}>${g<1?'あと '+fmt(Math.max(0,1e6-S.runEarned))+' ブロック必要':'🔺 多重構築する'}</button>
+      <div class="pr-note">
+        結晶1個につき全生産 +2%（現在 ×${crystalMult().toFixed(2)}）<br>
+        ${toNext}
+      </div>`;
+    const btn=L.querySelector('#prBtn');
+    if(btn) btn.onclick=()=>{ if(pendingCrystals()>=1){ document.getElementById('prGain').textContent='+'+pendingCrystals(); openOv('ovPr'); } };
+  }
+}
+
+function buy(id){
+  const b=BUILDINGS.find(x=>x.id===id);
+  const cost=costOf(b);
+  if(S.blocks>=cost){ S.blocks-=cost; S.counts[id]=(S.counts[id]||0)+1; render(); }
+}
+
+/* ===== 多重構築 ===== */
+function doPrestige(){
+  const g=pendingCrystals();
+  if(g<1){ closeOv('ovPr'); return; }
+  S.crystals+=g;
+  S.blocks=0; S.runEarned=0; S.counts={}; S.tapLv=0; S.prodLv=0;
+  closeOv('ovPr');
+  applyLayer(); render(); save();
+}
+
+/* ===== 描画まとめ ===== */
+function render(){
+  document.getElementById('blocks').textContent=fmt(S.blocks);
+  document.getElementById('bps').textContent=fmt(prodSec());
+  document.getElementById('crystals').textContent=fmt(S.crystals);
+  document.getElementById('mult').textContent='×'+prodMult().toFixed(2);
+  const li=currentLayer();
+  if(li!==lastLayer){ applyLayer(); lastLayer=li; }
+  drawTower();
+  renderList();
+}
+
+/* ===== セーブ／ロード ===== */
+const KEY='tower_idle_save_v1';
+function save(){
+  S.last=Date.now();
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+}
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw){ S=freshState(); return; }
+    S=Object.assign(freshState(),JSON.parse(raw));
+    // オフライン報酬
+    const dt=Math.min((Date.now()-(S.last||Date.now()))/1000, 8*3600);
+    if(dt>5){
+      const gain=prodSec()*dt;
+      if(gain>0){
+        S.blocks+=gain; S.runEarned+=gain; S.totalEarned+=gain;
+        document.getElementById('offAmt').textContent='+'+fmt(gain)+' ブロック';
+        setTimeout(()=>openOv('ovWelcome'),400);
+      }
+    }
+  }catch(e){ S=freshState(); }
+}
+
+/* ===== modal helpers ===== */
+function openOv(id){ document.getElementById(id).classList.add('show'); }
+function closeOv(id){ document.getElementById(id).classList.remove('show'); }
+document.getElementById('gear').onclick=()=>openOv('ovReset');
+function hardReset(){ try{localStorage.removeItem(KEY);}catch(e){} S=freshState(); closeOv('ovReset'); applyLayer(); render(); }
+
+/* ===== ループ起動 ===== */
+buildStars();
+load();
+applyLayer(); lastLayer=currentLayer();
+render();
+
+let acc=0;
+setInterval(()=>{
+  const p=prodSec()*0.1;
+  S.blocks+=p; S.runEarned+=p; S.totalEarned+=p;
+  document.getElementById('blocks').textContent=fmt(S.blocks);
+  document.getElementById('bps').textContent=fmt(prodSec());
+  acc+=0.1;
+  if(acc>=1){ acc=0; renderList(); drawTower();
+    document.getElementById('mult').textContent='×'+prodMult().toFixed(2);
+    document.getElementById('crystals').textContent=fmt(S.crystals);
+  }
+},100);
+
+setInterval(save,5000);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) save(); });
+window.addEventListener('beforeunload',save);
+</script>
 </body>
 </html>
