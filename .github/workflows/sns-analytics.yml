@@ -1,0 +1,40 @@
+name: Collect Analytics
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r sns_bot/requirements.txt
+
+      - name: Collect tweet metrics
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+        run: python -m sns_bot.src.analytics_tracker
+
+      - name: Commit analytics data
+        run: |
+          git config user.name "sns-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add sns_bot/data/post_log.json
+          git diff --cached --quiet || git commit -m "bot: update analytics $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push

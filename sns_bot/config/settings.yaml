@@ -1,0 +1,23 @@
+general:
+  language: ja
+  timezone: Asia/Tokyo
+  dry_run: true
+
+posting:
+  platform: x
+  max_posts_per_day: 3
+  min_hours_between_posts: 4
+  optimal_hours_jst: [10, 16, 22]
+
+trends:
+  region: japan
+  min_volume_score: 0
+  categories_exclude:
+    - politics
+    - disaster
+    - crime
+
+content:
+  template_style: mixed
+  max_hashtags: 3
+  include_emoji: true
