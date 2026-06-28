@@ -121,3 +121,4 @@ com.puranamasu45.slime_room
 ```
 
 The app is configured without ads, billing, network permission, or special Android permissions.
+Termuxから更新テスト
