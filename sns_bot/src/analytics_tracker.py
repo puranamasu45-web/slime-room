@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import tweepy
 
@@ -10,6 +10,13 @@ from sns_bot.src.utils import (
     save_json,
     setup_logging,
 )
+
+# Only collect metrics for posts newer than this many days. Older posts are
+# frozen (metrics_final=True) and never read again. Without this gate every
+# run re-fetched metrics for the entire post history, so the daily X API read
+# volume grew with the number of posts and total cost scaled quadratically
+# with the number of days the bot had been running.
+METRICS_WINDOW_DAYS = 3
 
 
 def get_x_client() -> tweepy.Client:
@@ -53,16 +60,50 @@ def run():
         logger.info("[DRY RUN] Would fetch metrics for %d posts", len(real_posts))
         return
 
-    client = get_x_client()
+    now = datetime.now(timezone.utc)
+    window = timedelta(days=METRICS_WINDOW_DAYS)
+
+    # Created lazily so we never need X API credentials (or open a client) when
+    # every post is already frozen and there is nothing to read.
+    client = None
     updated = 0
+    frozen = 0
 
     for entry in post_log:
+        # dry-run posts have no real tweet to read.
         if entry.get("dry_run", False):
+            continue
+
+        # Already frozen: never read again.
+        if entry.get("metrics_final"):
             continue
 
         tweet_id = entry.get("tweet_id")
         if not tweet_id or tweet_id == "dry_run":
             continue
+
+        # Outside the metrics window: freeze it and stop reading it forever.
+        posted_at = entry.get("posted_at")
+        if posted_at:
+            try:
+                age = now - datetime.fromisoformat(posted_at)
+            except ValueError:
+                logger.warning(
+                    "Invalid posted_at %r for tweet %s; freezing entry",
+                    posted_at,
+                    tweet_id,
+                )
+                entry["metrics_final"] = True
+                frozen += 1
+                continue
+            if age > window:
+                entry["metrics_final"] = True
+                frozen += 1
+                continue
+
+        # Within the window: this is the only case that costs an API read.
+        if client is None:
+            client = get_x_client()
 
         metrics = fetch_tweet_metrics(client, tweet_id)
         if metrics:
@@ -71,12 +112,19 @@ def run():
                 "retweets": metrics.get("retweet_count", 0),
                 "replies": metrics.get("reply_count", 0),
                 "impressions": metrics.get("impression_count", 0),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": now.isoformat(),
             }
             updated += 1
 
     save_json("post_log.json", post_log)
-    logger.info("Updated metrics for %d/%d posts", updated, len(real_posts))
+    logger.info(
+        "Updated metrics for %d posts, froze %d posts older than %d days "
+        "(out of %d real posts)",
+        updated,
+        frozen,
+        METRICS_WINDOW_DAYS,
+        len(real_posts),
+    )
 
     print_summary(post_log)
 
