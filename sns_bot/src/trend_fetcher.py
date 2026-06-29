@@ -1,4 +1,5 @@
 import argparse
+import random
 import sys
 from datetime import datetime, timezone
 
@@ -12,6 +13,29 @@ from sns_bot.src.utils import (
     save_json,
     setup_logging,
 )
+
+# Evergreen, season- and time-independent keywords used when pytrends returns
+# nothing (429, empty result, or an exception). They keep the posting pipeline
+# supplied so the account never goes silent, and read naturally in the
+# templates no matter when they are posted.
+FALLBACK_KEYWORDS = [
+    "ゲーム",
+    "アニメ",
+    "マンガ",
+    "映画",
+    "音楽",
+    "グルメ",
+    "カフェ",
+    "旅行",
+    "読書",
+    "ファッション",
+    "スイーツ",
+    "ガジェット",
+]
+
+
+def get_fallback_keywords() -> list[dict]:
+    return [{"keyword": kw, "source": "fallback"} for kw in FALLBACK_KEYWORDS]
 
 
 def fetch_trending_keywords() -> list[dict]:
@@ -42,7 +66,16 @@ def run():
     settings = load_settings()
     logger.info("Fetching trends for region: %s", settings["trends"]["region"])
 
-    raw_keywords = fetch_trending_keywords()
+    try:
+        raw_keywords = fetch_trending_keywords()
+    except Exception as e:
+        logger.warning("pytrends failed (%s); using fallback keywords", e)
+        raw_keywords = []
+
+    if not raw_keywords:
+        logger.warning("pytrends returned no keywords; using fallback keywords")
+        raw_keywords = get_fallback_keywords()
+
     logger.info("Fetched %d raw trending keywords", len(raw_keywords))
 
     blocked = load_blocked_keywords()
@@ -52,6 +85,18 @@ def run():
     existing_log = load_json("trends_log.json")
     new_keywords = deduplicate(filtered, existing_log)
     logger.info("New unique keywords: %d", len(new_keywords))
+
+    # Guarantee at least one keyword reaches the log so the post step is never
+    # left without input, even if dedup removed everything (e.g. fallback words
+    # already used recently). Prefer a fresh fallback word, but fall back to any.
+    if not new_keywords:
+        fallback = get_fallback_keywords()
+        fresh_fallback = deduplicate(fallback, existing_log)
+        new_keywords = [random.choice(fresh_fallback or fallback)]
+        logger.warning(
+            "No new keywords after dedup; injecting fallback keyword: %s",
+            new_keywords[0]["keyword"],
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     entries = [
