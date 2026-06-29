@@ -1,7 +1,7 @@
 general:
   language: ja
   timezone: Asia/Tokyo
-  dry_run: true
+  dry_run: false
 
 posting:
   platform: x
