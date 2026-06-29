@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import tweepy
 
 from sns_bot.src.content_generator import generate_post
+from sns_bot.src.trend_fetcher import get_fallback_keywords
 from sns_bot.src.utils import (
     is_dry_run,
     load_json,
@@ -57,8 +58,8 @@ def run(keyword_override: str | None = None):
         trends = [{"keyword": keyword_override, "source": "manual"}] + trends
 
     if not trends:
-        logger.warning("No trends available. Exiting.")
-        return
+        logger.warning("No trends available; using fallback keywords")
+        trends = get_fallback_keywords()
 
     post_log = load_json("post_log.json")
 
