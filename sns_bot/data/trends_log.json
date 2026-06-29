@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "keyword": "ゲーム",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "アニメ",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "マンガ",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "映画",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "音楽",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "グルメ",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "カフェ",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "旅行",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "読書",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "ファッション",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "スイーツ",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  },
+  {
+    "keyword": "ガジェット",
+    "source": "fallback",
+    "fetched_at": "2026-06-29T19:17:38.365594+00:00"
+  }
+]
