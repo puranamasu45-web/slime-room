@@ -1,0 +1,24 @@
+templates:
+  general:
+    - "今話題の「{keyword}」が気になる！みんなはどう思う？ #{keyword_hashtag} #トレンド"
+    - "「{keyword}」がトレンド入り！注目されてるのには理由があるよね #{keyword_hashtag}"
+    - "今日のトレンド「{keyword}」をチェック！これは見逃せない #{keyword_hashtag} #話題"
+    - "「{keyword}」が盛り上がってる！流れに乗り遅れるな #{keyword_hashtag}"
+
+  question:
+    - "「{keyword}」について皆さんどう思いますか？リプで教えて！ #{keyword_hashtag}"
+    - "今話題の「{keyword}」、賛成？反対？気になる #{keyword_hashtag} #アンケート"
+    - "「{keyword}」が話題だけど、みんなの意見を聞きたい！ #{keyword_hashtag}"
+
+  opinion:
+    - "個人的に「{keyword}」はかなり注目してる。今後の展開が楽しみ #{keyword_hashtag}"
+    - "「{keyword}」について思うこと。これは要チェックだと思う #{keyword_hashtag} #注目"
+    - "「{keyword}」の流れ、面白くなってきた！ #{keyword_hashtag}"
+
+  news:
+    - "「{keyword}」が話題に！最新情報をチェックしよう #{keyword_hashtag} #ニュース"
+    - "速報：「{keyword}」がトレンド急上昇中！ #{keyword_hashtag} #速報"
+
+  entertainment:
+    - "「{keyword}」が熱い！エンタメ好きなら要チェック #{keyword_hashtag} #エンタメ"
+    - "「{keyword}」で盛り上がってる！みんな見た？ #{keyword_hashtag}"
