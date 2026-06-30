@@ -63,5 +63,10 @@
     "keyword": "映画",
     "source": "fallback",
     "fetched_at": "2026-06-30T11:26:44.181021+00:00"
+  },
+  {
+    "keyword": "音楽",
+    "source": "fallback",
+    "fetched_at": "2026-06-30T18:23:01.776761+00:00"
   }
 ]
