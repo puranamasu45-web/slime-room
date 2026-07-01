@@ -68,5 +68,10 @@
     "keyword": "音楽",
     "source": "fallback",
     "fetched_at": "2026-06-30T18:23:01.776761+00:00"
+  },
+  {
+    "keyword": "旅行",
+    "source": "fallback",
+    "fetched_at": "2026-07-01T11:40:53.068122+00:00"
   }
 ]
