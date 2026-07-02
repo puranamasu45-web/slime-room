@@ -78,5 +78,10 @@
     "keyword": "カフェ",
     "source": "fallback",
     "fetched_at": "2026-07-01T18:32:41.419598+00:00"
+  },
+  {
+    "keyword": "旅行",
+    "source": "fallback",
+    "fetched_at": "2026-07-02T10:19:34.997893+00:00"
   }
 ]
